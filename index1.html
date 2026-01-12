@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manav Garg | Full Stack Developer</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=cal-sans@400,500,600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Cal Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#3b82f6',     /* Blue-500 */
+                        secondary: '#8b5cf6',   /* Violet-500 */
+                        accent: '#06b6d4',      /* Cyan-500 */
+                        dark: '#030712',        /* Gray-950 */
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- CSS Variables & Global Styles --- */
+        :root {
+            --cursor-x: 50%;
+            --cursor-y: 50%;
+        }
+
+        body {
+            background-color: #030712; /* Tailwind Gray-950 */
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .light body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* 3D Canvas Layer */
+        #background-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100vh;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* --- Glassmorphism Cards --- */
+        .glass-card {
+            background: rgba(17, 24, 39, 0.4); /* Dark transparency */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .light .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Spotlight Effect */
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(
+                800px circle at var(--mouse-x) var(--mouse-y),
+                rgba(59, 130, 246, 0.15),
+                transparent 40%
+            );
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .glass-card:hover::before { opacity: 1; }
+        .glass-card > * { position: relative; z-index: 1; }
+
+        /* --- Typography Effects --- */
+        .text-gradient {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .light .text-gradient {
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- Timeline Styles --- */
+        .timeline-line {
+            position: absolute;
+            left: 50%; transform: translateX(-50%);
+            top: 0; bottom: 0; width: 2px;
+            background: linear-gradient(to bottom, transparent, #3b82f6, #8b5cf6, transparent);
+        }
+        
+        /* --- Skill Circles --- */
+        .skill-circle svg { transform: rotate(-90deg); }
+        .skill-circle circle { 
+            fill: none; 
+            stroke-width: 6; 
+            stroke-linecap: round; 
+        }
+        .dark .skill-track { stroke: #1e293b; }
+        .light .skill-track { stroke: #e2e8f0; }
+        
+        .skill-progress {
+            stroke: url(#gradient);
+            stroke-dasharray: 283; /* 2 * PI * 45 */
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1.5s ease-out;
+            filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+        }
+
+        /* --- Animations --- */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Typewriter Cursor */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-start infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Mobile adjustments for timeline */
+        @media (max-width: 768px) {
+            .timeline-line { left: 20px; }
+        }
+    </style>
+</head>
+<body class="selection:bg-primary selection:text-white">
+    
+    <div id="background-canvas"></div>
+    
+    <svg width="0" height="0" class="absolute">
+        <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#3b82f6" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <nav id="navbar" class="fixed w-full z-50 transition-all duration-300 border-b border-transparent">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="#" class="text-2xl font-display font-bold tracking-tighter hover:opacity-80 transition-opacity">
+                    MG<span class="text-primary">.</span>
+                </a>
+
+                <div class="hidden md:flex space-x-8 text-sm font-medium">
+                    <a href="#about" class="hover:text-primary transition-colors">About</a>
+                    <a href="#experience" class="hover:text-primary transition-colors">Experience</a>
+                    <a href="#projects" class="hover:text-primary transition-colors">Projects</a>
+                    <a href="#skills" class="hover:text-primary transition-colors">Skills</a>
+                    <a href="#contact" class="hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Toggle Theme">
+                        <i data-feather="moon" class="w-5 h-5 hidden dark:block"></i>
+                        <i data-feather="sun" class="w-5 h-5 block dark:hidden"></i>
+                    </button>
+                    <button id="mobile-menu-btn" class="md:hidden p-2">
+                        <i data-feather="menu" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full bg-dark/95 backdrop-blur-xl border-b border-white/10">
+            <div class="px-4 pt-2 pb-4 space-y-2">
+                <a href="#about" class="block py-2 hover:text-primary">About</a>
+                <a href="#experience" class="block py-2 hover:text-primary">Experience</a>
+                <a href="#projects" class="block py-2 hover:text-primary">Projects</a>
+                <a href="#skills" class="block py-2 hover:text-primary">Skills</a>
+                <a href="#contact" class="block py-2 hover:text-primary">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section id="hero" class="min-h-screen flex items-center justify-center relative overflow-hidden">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse-slow"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[100px] animate-pulse-slow" style="animation-delay: 2s;"></div>
+
+            <div class="text-center z-10 px-4 max-w-4xl mx-auto">
+                <div class="inline-block mb-4 px-3 py-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm text-xs font-medium tracking-wide text-primary">
+                    AVAILABLE FOR HIRE
+                </div>
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-display font-bold tracking-tight mb-6">
+                    Hi, I'm <span class="text-gradient">Manav Garg</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-slate-400 mb-8 font-light h-8">
+                    <span id="typewriter" class="typing-cursor"></span>
+                </p>
+                <p class="text-slate-400 max-w-2xl mx-auto mb-10 text-base md:text-lg leading-relaxed">
+                    Passionate about crafting elegant, efficient, and user-centric web applications. Turning complex problems into beautiful, intuitive digital solutions using the MERN stack.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="#projects" class="group relative px-8 py-3 rounded-full bg-primary text-white font-semibold overflow-hidden shadow-lg shadow-primary/25 hover:shadow-primary/50 transition-all">
+                        <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                        <span>View Work</span>
+                    </a>
+                    <a href="https://drive.google.com/file/d/1PJxkSezgo-7h-6frOq-6eFBSsxlSWXuE/view?usp=sharing" target="_blank" class="px-8 py-3 rounded-full border border-white/10 hover:bg-white/5 transition-colors font-semibold flex items-center gap-2">
+                        <i data-feather="download" class="w-4 h-4"></i> Resume
+                    </a>
+                </div>
+            </div>
+            
+            <a href="#about" class="absolute bottom-10 animate-bounce text-slate-500 hover:text-white transition-colors">
+                <i data-feather="chevron-down" class="w-6 h-6"></i>
+            </a>
+        </section>
+
+        <section id="about" class="py-24 relative fade-up">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="grid md:grid-cols-2 gap-16 items-center">
+                    <div class="relative group">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                        <div class="relative rounded-2xl overflow-hidden aspect-square border border-white/10">
+                            <img src="./image.png" alt="Manav Garg" class="object-cover w-full h-full transform transition duration-500 group-hover:scale-105">
+                            <div class="absolute inset-0 bg-gradient-to-t from-dark/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-6 left-6 right-6">
+                                <div class="flex items-center gap-2 text-white/90">
+                                    <i data-feather="map-pin" class="w-4 h-4 text-primary"></i>
+                                    <span class="text-sm font-medium">Delhi, India</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-3xl md:text-4xl font-display font-bold mb-6">About Me</h2>
+                        <div class="space-y-4 text-slate-400 text-lg leading-relaxed">
+                            <p>
+                                I'm a Computer Science student at <strong class="text-white">HMR Institute of Technology and Management</strong>, specializing in the MERN stack.
+                            </p>
+                            <p>
+                                I thrive on building innovative web solutions and contributing to collaborative, problem-solving teams. My goal is to leverage my technical skills and creative drive to build impactful applications that solve real-world problems.
+                            </p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mt-8">
+                            <div class="glass-card p-4 rounded-xl flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-primary/10 text-primary"><i data-feather="code" class="w-5 h-5"></i></div>
+                                <span class="font-medium">MERN Stack</span>
+                            </div>
+                            <div class="glass-card p-4 rounded-xl flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-secondary/10 text-secondary"><i data-feather="terminal" class="w-5 h-5"></i></div>
+                                <span class="font-medium">DSA in C++</span>
+                            </div>
+                            <div class="glass-card p-4 rounded-xl flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-accent/10 text-accent"><i data-feather="cpu" class="w-5 h-5"></i></div>
+                                <span class="font-medium">Problem Solving</span>
+                            </div>
+                            <div class="glass-card p-4 rounded-xl flex items-center gap-3">
+                                <div class="p-2 rounded-lg bg-pink-500/10 text-pink-500"><i data-feather="users" class="w-5 h-5"></i></div>
+                                <span class="font-medium">Teamwork</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="experience" class="py-24 relative fade-up">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Experience</h2>
+                    <p class="text-slate-400">My professional journey and internships.</p>
+                </div>
+
+                <div class="relative">
+                    <div class="timeline-line md:block hidden"></div>
+                    <div class="absolute left-[20px] top-0 bottom-0 width-2px bg-white/10 md:hidden block w-[2px]"></div>
+
+                    <div class="space-y-12">
+                        <div class="relative md:grid md:grid-cols-2 md:gap-12 items-center">
+                            <div class="md:text-right mb-4 md:mb-0 pl-12 md:pl-0">
+                                <span class="text-primary font-mono text-sm tracking-wider">July 2025 - Dec 2025</span>
+                                <h3 class="text-2xl font-bold mt-1">Software Intern</h3>
+                                <p class="text-slate-400">OpSightAI • Noida, U.P</p>
+                            </div>
+                            <div class="absolute left-[11px] md:left-1/2 w-4 h-4 rounded-full bg-dark border-4 border-primary transform -translate-x-1/2 z-10 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+                            <div class="glass-card p-6 rounded-2xl md:ml-0 ml-12">
+                                <p class="text-slate-400 text-sm leading-relaxed">
+                                    Developed a full-stack Learning Management System using React, Node.js, and MongoDB. Built three main components: Superadmin, Instructor, and User dashboards.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="relative md:grid md:grid-cols-2 md:gap-12 items-center">
+                            <div class="md:order-2 mb-4 md:mb-0 pl-12 md:pl-0">
+                                <span class="text-secondary font-mono text-sm tracking-wider">Apr 2025 - May 2025</span>
+                                <h3 class="text-2xl font-bold mt-1">Web Developer</h3>
+                                <p class="text-slate-400">TechExpo2k25 HMRITM</p>
+                            </div>
+                            <div class="absolute left-[11px] md:left-1/2 w-4 h-4 rounded-full bg-dark border-4 border-secondary transform -translate-x-1/2 z-10"></div>
+                            <div class="glass-card p-6 rounded-2xl md:order-1 md:ml-0 ml-12">
+                                <p class="text-slate-400 text-sm leading-relaxed">
+                                    Developed and deployed the official website for the annual technical fest, ensuring responsive design, seamless navigation, and real-time event updates.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="relative md:grid md:grid-cols-2 md:gap-12 items-center">
+                            <div class="md:text-right mb-4 md:mb-0 pl-12 md:pl-0">
+                                <span class="text-accent font-mono text-sm tracking-wider">Jan 2025 - May 2025</span>
+                                <h3 class="text-2xl font-bold mt-1">Web Developer</h3>
+                                <p class="text-slate-400">ICAMC-HMRITM Conference</p>
+                            </div>
+                            <div class="absolute left-[11px] md:left-1/2 w-4 h-4 rounded-full bg-dark border-4 border-accent transform -translate-x-1/2 z-10"></div>
+                            <div class="glass-card p-6 rounded-2xl md:ml-0 ml-12">
+                                <p class="text-slate-400 text-sm leading-relaxed">
+                                    Designed and developed the official college conference website with a professional and user-friendly interface for paper submissions and scheduling.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="py-24 relative fade-up">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Featured Projects</h2>
+                    <p class="text-slate-400">A selection of my best work.</p>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    
+                    <div class="glass-card rounded-2xl p-6 flex flex-col group">
+                        <div class="relative overflow-hidden rounded-xl mb-5 aspect-video border border-white/10">
+                            <img src="https://placehold.co/600x400/0d1117/58a6ff?text=GargX" alt="GargX Project" class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 text-white">GargX (Chat App)</h3>
+                        <ul class="mb-5 space-y-2 text-slate-400 text-sm list-disc list-inside grow">
+                            <li>Real-time chat using MERN stack & Socket.IO.</li>
+                            <li>Secure authentication & MongoDB persistence.</li>
+                            <li>Custom chat rooms and instant messaging.</li>
+                        </ul>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="px-3 py-1 text-xs font-semibold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full">React</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-green-300 bg-green-500/10 border border-green-500/20 rounded-full">Node.js</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-slate-300 bg-slate-500/10 border border-slate-500/20 rounded-full">Socket.io</span>
+                        </div>
+                        <div class="flex items-center gap-4 pt-4 border-t border-white/10 mt-auto">
+                            <a href="https://gargx.onrender.com/" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-primary hover:text-white transition-colors">
+                                <i data-feather="external-link" class="w-4 h-4"></i> Live Demo
+                            </a>
+                            <a href="https://github.com/manavgarg-source3/MERN-Chatapp" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                                <i data-feather="github" class="w-4 h-4"></i> GitHub
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-6 flex flex-col group">
+                        <div class="relative overflow-hidden rounded-xl mb-5 aspect-video border border-white/10">
+                            <img src="https://placehold.co/600x400/0d1117/e364e3?text=RANI" alt="RANI Project" class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105">
+                        </div>
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-2xl font-bold text-white">RANI (Safety)</h3>
+                            <span class="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide">Award Winner</span>
+                        </div>
+                        <ul class="mb-5 space-y-2 text-slate-400 text-sm list-disc list-inside grow">
+                            <li>3rd Place Winner at HMRITM Tech Fest.</li>
+                            <li>Real-time SOS triggering & alert systems.</li>
+                            <li>Smart navigation for emergency routes.</li>
+                        </ul>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="px-3 py-1 text-xs font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-full">React</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-green-300 bg-green-500/10 border border-green-500/20 rounded-full">Node.js</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-full">MongoDB</span>
+                        </div>
+                        <div class="flex items-center gap-4 pt-4 border-t border-white/10 mt-auto">
+                             <a href="javascript:void(0);" title="Demo Unavailable" class="flex items-center gap-2 text-sm font-semibold text-slate-600 cursor-not-allowed">
+                                <i data-feather="lock" class="w-4 h-4"></i> Demo Offline
+                            </a>
+                            <a href="https://github.com/Khushibansal777/WomenSafety" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                                <i data-feather="github" class="w-4 h-4"></i> GitHub
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-6 flex flex-col group">
+                         <div class="relative overflow-hidden rounded-xl mb-5 aspect-video border border-white/10">
+                            <img src="https://placehold.co/600x400/0d1117/30c8c8?text=LMS" alt="LMS" class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 text-white">OpSightAI LMS</h3>
+                         <ul class="mb-5 space-y-2 text-slate-400 text-sm list-disc list-inside grow">
+                            <li>Scalable LMS with Role-Based Access Control.</li>
+                            <li>Admin, Instructor, and Learner dashboards.</li>
+                            <li>Rate limiting & production-grade security.</li>
+                        </ul>
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="px-3 py-1 text-xs font-semibold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-full">React</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full">Prisma</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-orange-300 bg-orange-500/10 border border-orange-500/20 rounded-full">AWS</span>
+                        </div>
+                        <div class="flex items-center gap-4 pt-4 border-t border-white/10 mt-auto">
+                            <a href="https://ecommerce-react-ten-gold.vercel.app/" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-primary hover:text-white transition-colors">
+                                <i data-feather="external-link" class="w-4 h-4"></i> Live Demo
+                            </a>
+                            <a href="https://github.com/manavgarg-source3/Ecommerce-react" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                                <i data-feather="github" class="w-4 h-4"></i> GitHub
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-6 flex flex-col group">
+                         <div class="relative overflow-hidden rounded-xl mb-5 aspect-video border border-white/10">
+                            <img src="https://placehold.co/600x400/0d1117/30c8c8?text=SoulSpace" alt="SoulSpace" class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105">
+                        </div>
+                         <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-2xl font-bold text-white">SoulSpace</h3>
+                             <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide">SIH 2025</span>
+                        </div>
+                         <ul class="mb-5 space-y-2 text-slate-400 text-sm list-disc list-inside grow">
+                            <li>AI-powered mental wellness (SIH 2025).</li>
+                            <li>PHQ-9 & GAD-7 screenings via Gemini API.</li>
+                            <li>Offline-first architecture (SMS/IVR) for rural.</li>
+                        </ul>
+                         <div class="flex flex-wrap gap-2 mb-6">
+                            <span class="px-3 py-1 text-xs font-semibold text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-full">React</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-full">Gemini</span>
+                            <span class="px-3 py-1 text-xs font-semibold text-green-300 bg-green-500/10 border border-green-500/20 rounded-full">Node.js</span>
+                        </div>
+                        <div class="flex items-center gap-4 pt-4 border-t border-white/10 mt-auto">
+                            <a href="#" class="flex items-center gap-2 text-sm font-semibold text-primary hover:text-white transition-colors">
+                                <i data-feather="external-link" class="w-4 h-4"></i> Live Demo
+                            </a>
+                            <a href="#" target="_blank" class="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                                <i data-feather="github" class="w-4 h-4"></i> GitHub
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="skills" class="py-24 relative fade-up">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Technical Skills</h2>
+                    <p class="text-slate-400">Tools and technologies I use to build.</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 justify-items-center">
+                    <div class="skill-item text-center group" data-percent="95">
+                        <div class="skill-circle w-[100px] h-[100px] mx-auto mb-4 relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle class="skill-track opacity-20" cx="50" cy="50" r="45"></circle>
+                                <circle class="skill-progress" cx="50" cy="50" r="45"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg">
+                                <span class="skill-percent">0%</span>
+                            </div>
+                        </div>
+                        <h4 class="font-semibold text-lg group-hover:text-primary transition-colors">React.js</h4>
+                    </div>
+                    <div class="skill-item text-center group" data-percent="90">
+                        <div class="skill-circle w-[100px] h-[100px] mx-auto mb-4 relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle class="skill-track opacity-20" cx="50" cy="50" r="45"></circle>
+                                <circle class="skill-progress" cx="50" cy="50" r="45"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg"><span class="skill-percent">0%</span></div>
+                        </div>
+                        <h4 class="font-semibold text-lg group-hover:text-primary transition-colors">Node.js</h4>
+                    </div>
+                    <div class="skill-item text-center group" data-percent="85">
+                        <div class="skill-circle w-[100px] h-[100px] mx-auto mb-4 relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle class="skill-track opacity-20" cx="50" cy="50" r="45"></circle>
+                                <circle class="skill-progress" cx="50" cy="50" r="45"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg"><span class="skill-percent">0%</span></div>
+                        </div>
+                        <h4 class="font-semibold text-lg group-hover:text-primary transition-colors">MongoDB</h4>
+                    </div>
+                    <div class="skill-item text-center group" data-percent="80">
+                         <div class="skill-circle w-[100px] h-[100px] mx-auto mb-4 relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle class="skill-track opacity-20" cx="50" cy="50" r="45"></circle>
+                                <circle class="skill-progress" cx="50" cy="50" r="45"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg"><span class="skill-percent">0%</span></div>
+                        </div>
+                        <h4 class="font-semibold text-lg group-hover:text-primary transition-colors">Next.js</h4>
+                    </div>
+                    <div class="skill-item text-center group" data-percent="95">
+                        <div class="skill-circle w-[100px] h-[100px] mx-auto mb-4 relative">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle class="skill-track opacity-20" cx="50" cy="50" r="45"></circle>
+                                <circle class="skill-progress" cx="50" cy="50" r="45"></circle>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-lg"><span class="skill-percent">0%</span></div>
+                        </div>
+                        <h4 class="font-semibold text-lg group-hover:text-primary transition-colors">Express</h4>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="py-24 relative fade-up">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold mb-4">Get In Touch</h2>
+                    <p class="text-slate-400">Available for new opportunities and collaborations.</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-8 md:p-12">
+                    <form id="contact-form" class="space-y-6">
+                        <input type="hidden" name="access_key" value="f72c20ed-a6b3-4a4b-b67a-480ac8388c48">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="relative">
+                                <input type="text" id="name" name="name" class="peer w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-transparent focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" placeholder="Name" required>
+                                <label for="name" class="absolute left-4 -top-2.5 bg-dark px-1 text-sm text-slate-400 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary transition-all cursor-text">Name</label>
+                            </div>
+                            <div class="relative">
+                                <input type="email" id="email" name="email" class="peer w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-transparent focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" placeholder="Email" required>
+                                <label for="email" class="absolute left-4 -top-2.5 bg-dark px-1 text-sm text-slate-400 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary transition-all cursor-text">Email</label>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <textarea id="message" name="message" rows="5" class="peer w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-transparent focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none" placeholder="Message" required></textarea>
+                            <label for="message" class="absolute left-4 -top-2.5 bg-dark px-1 text-sm text-slate-400 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary transition-all cursor-text">Message</label>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-4 rounded-lg hover:shadow-lg hover:shadow-primary/25 transform hover:-translate-y-1 transition-all duration-200">
+                            Send Message
+                        </button>
+                    </form>
+                    <div id="form-result" class="mt-4 text-center text-sm font-medium"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-white/10 bg-dark py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <span class="text-2xl font-display font-bold">MG<span class="text-primary">.</span></span>
+                <p class="text-slate-400 text-sm mt-2">Built with React, Tailwind & Three.js</p>
+            </div>
+            
+            <div class="flex gap-6">
+                <a href="https://github.com/manavgarg-source3" target="_blank" class="p-3 rounded-full bg-white/5 hover:bg-white/10 hover:text-primary transition-colors">
+                    <i data-feather="github" class="w-5 h-5"></i>
+                </a>
+                <a href="https://linkedin.com/in/manavgarg" target="_blank" class="p-3 rounded-full bg-white/5 hover:bg-white/10 hover:text-primary transition-colors">
+                    <i data-feather="linkedin" class="w-5 h-5"></i>
+                </a>
+                <a href="mailto:contact@manav.dev" class="p-3 rounded-full bg-white/5 hover:bg-white/10 hover:text-primary transition-colors">
+                    <i data-feather="mail" class="w-5 h-5"></i>
+                </a>
+            </div>
+            
+            <div class="text-slate-500 text-sm">
+                &copy; 2025 Manav Garg.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+    
+            // ==========================================
+            //  3D SHOOTING STAR BACKGROUND (Three.js)
+            // ==========================================
+            const initThreeJS = () => {
+                const container = document.getElementById('background-canvas');
+                if (!container) return;
+    
+                // 1. Setup Scene
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.innerHTML = ''; // Clear any old canvas
+                container.appendChild(renderer.domElement);
+    
+                camera.position.z = 1;
+    
+                // 2. Create Static Starfield (Background)
+                const starCount = 3000;
+                const starGeo = new THREE.BufferGeometry();
+                const starPos = new Float32Array(starCount * 3);
+                
+                for(let i=0; i<starCount*3; i++) {
+                    starPos[i] = (Math.random() - 0.5) * 40; // Spread stars wide
+                }
+                
+                starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+                const starMat = new THREE.PointsMaterial({
+                    size: 0.02,
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true
+                });
+                const starMesh = new THREE.Points(starGeo, starMat);
+                scene.add(starMesh);
+    
+                // 3. Create Shooting Stars Logic
+                const shootingStarCount = 5; // Number of simultaneous shooting stars
+                const shootingStars = [];
+    
+                // Helper to reset a shooting star to a random start position
+                const resetShootingStar = (star) => {
+                    star.x = (Math.random() - 0.5) * 40;
+                    star.y = (Math.random() * 20) + 10; // Start above screen
+                    star.z = (Math.random() - 0.5) * 10; // Random depth
+                    star.speed = (Math.random() * 0.2) + 0.1; // Random speed
+                    star.len = (Math.random() * 3) + 1; // Random tail length
+                    star.active = false;
+                    
+                    // Random delay before spawning
+                    setTimeout(() => { star.active = true; }, Math.random() * 5000);
+                };
+    
+                // Initialize Geometry for Shooting Stars (Lines)
+                // We use a LineSegments geometry where each star is a distinct segment
+                const lineGeo = new THREE.BufferGeometry();
+                const linePos = new Float32Array(shootingStarCount * 6); // 2 points per line * 3 coords
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+                
+                const lineMat = new THREE.LineBasicMaterial({
+                    color: 0xa78bfa, // Violetish tint for shooting stars
+                    transparent: true,
+                    opacity: 0.8,
+                    linewidth: 2 // Note: Windows WebGL often ignores linewidth > 1
+                });
+                const starLines = new THREE.LineSegments(lineGeo, lineMat);
+                scene.add(starLines);
+    
+                // Create abstract star objects to track state
+                for(let i=0; i<shootingStarCount; i++) {
+                    const star = { x: 0, y: 0, z: 0, speed: 0, len: 0, active: false };
+                    resetShootingStar(star);
+                    shootingStars.push(star);
+                }
+    
+                // 4. Mouse Interaction Variables
+                let mouseX = 0;
+                let mouseY = 0;
+                let targetRotationX = 0;
+                let targetRotationY = 0;
+                
+                window.addEventListener('mousemove', (e) => {
+                    mouseX = (e.clientX - window.innerWidth / 2) / 1000;
+                    mouseY = (e.clientY - window.innerHeight / 2) / 1000;
+                });
+    
+                // 5. Animation Loop
+                const animate = () => {
+                    requestAnimationFrame(animate);
+    
+                    // A. Rotate Background Stars gently
+                    targetRotationX = mouseY * 0.5;
+                    targetRotationY = mouseX * 0.5;
+                    
+                    starMesh.rotation.y += 0.0005 + (targetRotationY - starMesh.rotation.y) * 0.05;
+                    starMesh.rotation.x += (targetRotationX - starMesh.rotation.x) * 0.05;
+    
+                    // B. Update Shooting Stars
+                    const positions = starLines.geometry.attributes.position.array;
+                    
+                    shootingStars.forEach((star, i) => {
+                        const idx = i * 6; // 6 coordinates per star (Start XYZ, End XYZ)
+    
+                        if(star.active) {
+                            // Move star diagonally down-left
+                            star.x -= star.speed;
+                            star.y -= star.speed; 
+                            
+                            // Update Head Position
+                            positions[idx] = star.x;
+                            positions[idx+1] = star.y;
+                            positions[idx+2] = star.z;
+                            
+                            // Update Tail Position (drags behind head)
+                            positions[idx+3] = star.x + star.speed * star.len;
+                            positions[idx+4] = star.y + star.speed * star.len;
+                            positions[idx+5] = star.z;
+    
+                            // Check if off screen
+                            if (star.x < -25 || star.y < -15) {
+                                resetShootingStar(star);
+                                // Hide it until it resets
+                                positions[idx] = positions[idx+1] = positions[idx+2] = 999;
+                                positions[idx+3] = positions[idx+4] = positions[idx+5] = 999;
+                            }
+                        } else {
+                            // Hide inactive stars
+                            positions[idx] = positions[idx+1] = positions[idx+2] = 999;
+                            positions[idx+3] = positions[idx+4] = positions[idx+5] = 999;
+                        }
+                    });
+                    
+                    starLines.geometry.attributes.position.needsUpdate = true;
+                    renderer.render(scene, camera);
+                };
+    
+                animate();
+    
+                // Handle Window Resize
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+                
+                // Handle Theme Change (Update Star Color)
+                const updateThemeColors = () => {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    // Dark mode: White stars, Light mode: Dark slate stars
+                    starMat.color.setHex(isDark ? 0xffffff : 0x1e293b);
+                    // Shooting stars: Violet in dark, Blue in light
+                    lineMat.color.setHex(isDark ? 0xa78bfa : 0x2563eb);
+                };
+                
+                // Listen to your specific theme toggle button
+                document.getElementById('theme-toggle').addEventListener('click', () => {
+                    setTimeout(updateThemeColors, 50);
+                });
+                // Initial call
+                updateThemeColors();
+            };
+    
+            // Run the 3D Engine
+            initThreeJS();
+    
+    
+            // ==========================================
+            //  EXISTING UI LOGIC (Typewriter, Forms etc)
+            // ==========================================
+            
+            // 1. Typewriter Effect
+            const roles = ["MERN Stack Developer", "Problem Solver", "Tech Enthusiast"];
+            let roleIndex = 0;
+            let charIndex = 0;
+            let isDeleting = false;
+            const typewriterElement = document.getElementById('typewriter');
+            
+            function type() {
+                if (!typewriterElement) return;
+                const currentRole = roles[roleIndex];
+                if (isDeleting) {
+                    typewriterElement.textContent = currentRole.substring(0, charIndex - 1);
+                    charIndex--;
+                } else {
+                    typewriterElement.textContent = currentRole.substring(0, charIndex + 1);
+                    charIndex++;
+                }
+                if (!isDeleting && charIndex === currentRole.length) {
+                    isDeleting = true;
+                    setTimeout(type, 2000);
+                } else if (isDeleting && charIndex === 0) {
+                    isDeleting = false;
+                    roleIndex = (roleIndex + 1) % roles.length;
+                    setTimeout(type, 500);
+                } else {
+                    setTimeout(type, isDeleting ? 50 : 100);
+                }
+            }
+            type();
+    
+            // 2. Spotlight Effect
+            document.querySelectorAll('.glass-card').forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+                    card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
+                });
+            });
+    
+            // 3. Navbar Blur on Scroll
+            const navbar = document.getElementById('navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    navbar.classList.add('bg-dark/80', 'backdrop-blur-md', 'shadow-lg');
+                } else {
+                    navbar.classList.remove('bg-dark/80', 'backdrop-blur-md', 'shadow-lg');
+                }
+            });
+    
+            // 4. Fade Up Animation
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) entry.target.classList.add('visible');
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    
+            // 5. Skill Circle Animation
+            const skillObserver = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const item = entry.target;
+                        const percent = item.getAttribute('data-percent');
+                        const circle = item.querySelector('.skill-progress');
+                        const text = item.querySelector('.skill-percent');
+                        const offset = 283 - (283 * percent / 100);
+                        circle.style.strokeDashoffset = offset;
+                        let count = 0;
+                        const interval = setInterval(() => {
+                            if (count >= percent) clearInterval(interval);
+                            else {
+                                count++;
+                                text.textContent = count + '%';
+                            }
+                        }, 20);
+                        obs.unobserve(item);
+                    }
+                });
+            }, { threshold: 0.5 });
+            document.querySelectorAll('.skill-item').forEach(el => skillObserver.observe(el));
+    
+            // 6. Theme Toggle Logic
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+            }
+            themeToggleBtn.addEventListener('click', () => {
+                html.classList.toggle('dark');
+                html.classList.toggle('light');
+                localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+            });
+    
+            // 7. Mobile Menu
+            const mobileBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+            document.querySelectorAll('#mobile-menu a').forEach(link => {
+                link.addEventListener('click', () => mobileMenu.classList.add('hidden'));
+            });
+            
+            // 8. Contact Form Handling
+            const form = document.getElementById('contact-form');
+            const result = document.getElementById('form-result');
+            if(form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(form);
+                    const object = {};
+                    formData.forEach((value, key) => { object[key] = value; });
+                    const json = JSON.stringify(object);
+                    result.innerHTML = "Sending...";
+                    result.className = 'mt-4 text-center text-sm font-medium text-slate-400';
+    
+                    fetch('https://api.web3forms.com/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: json
+                    })
+                    .then(async (response) => {
+                        let jsonResponse = await response.json();
+                        if (response.status == 200) {
+                            result.innerHTML = "Message sent successfully!";
+                            result.className = 'mt-4 text-center text-sm font-medium text-green-500';
+                            form.reset();
+                        } else {
+                            result.innerHTML = jsonResponse.message;
+                            result.className = 'mt-4 text-center text-sm font-medium text-red-500';
+                        }
+                    })
+                    .catch(error => {
+                        result.innerHTML = "Something went wrong!";
+                        result.className = 'mt-4 text-center text-sm font-medium text-red-500';
+                    })
+                    .finally(() => {
+                        setTimeout(() => { result.innerHTML = ''; }, 5000);
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

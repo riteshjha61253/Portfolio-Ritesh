@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ritesh - MERN Stack Developer</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+      /* Custom Styles */
+      :root {
+        --background-dark: #0d1117;
+        --background-light: #f6f8fa;
+        --text-dark: #c9d1d9;
+        --text-light: #24292f;
+        --primary: #58a6ff; /* A vibrant blue */
+        --primary-hover: #79b8ff;
+        --secondary: #e364e3; /* A vibrant magenta/pink */
+        --accent: #30c8c8; /* A vibrant cyan */
+        --card-dark: rgba(22, 27, 34, 0.6);
+        --card-light: rgba(255, 255, 255, 0.7);
+        /* Removed section background colors to let the canvas show through */
+        --border-dark: rgba(48, 54, 61, 0.8);
+        --border-light: rgba(208, 215, 222, 0.8);
+        --shadow-color: rgba(88, 166, 255, 0.2);
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Sora", sans-serif;
+        transition: background-color 0.5s ease, color 0.5s ease;
+      }
+
+      .dark body {
+        background-color: var(--background-dark);
+        color: var(--text-dark);
+      }
+
+      .light body {
+        background-color: var(--background-light);
+        color: var(--text-light);
+      }
+
+      #background-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: -1; /* Ensures it's behind all content */
+      }
+
+      /* Sections are now transparent with a blur effect to show the 3D background */
+      main > section:not(#hero) {
+        position: relative;
+        z-index: 2;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        background-color: transparent; /* Makes section background see-through */
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .text-shadow-glow {
+        text-shadow: 0 0 8px var(--primary), 0 0 20px rgba(88, 166, 255, 0.5);
+      }
+      .light .text-shadow-glow {
+        text-shadow: none;
+      }
+
+      /* Aurora Card Effect */
+      .aurora-card {
+        position: relative;
+        overflow: hidden;
+        background: var(--card-dark);
+        border: 1px solid var(--border-dark);
+        transition: all 0.3s ease;
+      }
+      .light .aurora-card {
+        background: var(--card-light);
+        border: 1px solid var(--border-light);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+      }
+      .aurora-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+          800px circle at var(--mouse-x) var(--mouse-y),
+          var(--primary),
+          transparent 40%
+        );
+        opacity: 0;
+        transition: opacity 0.5s;
+        z-index: 1; /* FIX: Set z-index to 1 to place it above the background but below the content. */
+      }
+      .aurora-card:hover::before {
+        opacity: 0.1;
+      }
+      .aurora-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 10px 30px -10px var(--shadow-color);
+      }
+
+      /* FIX: New rule to ensure all direct children of the card are layered on top of the ::before pseudo-element. */
+      .aurora-card > * {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* Scroll Down Indicator */
+      .scroll-down {
+        animation: bounce 2.5s infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+          transform: translateY(0);
+        }
+        40% {
+          transform: translateY(-20px);
+        }
+        60% {
+          transform: translateY(-10px);
+        }
+      }
+
+      /* Section Fade-in Animation */
+      .fade-in-section {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+      }
+      .fade-in-section.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Experience Timeline */
+      .timeline-container::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(
+          to bottom,
+          var(--primary),
+          var(--secondary),
+          transparent
+        );
+        transform: translateX(-50%);
+      }
+      .timeline-item {
+        position: relative;
+        margin-bottom: 80px; /* Increased gap between timeline items */
+        width: 50%;
+      }
+      .timeline-item:nth-child(odd) {
+        padding-right: 50px;
+        text-align: right;
+        left: 0;
+      }
+      .timeline-item:nth-child(even) {
+        padding-left: 50px;
+        text-align: left;
+        left: 50%;
+      }
+
+      /* FIX: Increased background opacity for timeline cards for better readability */
+      .timeline-content.aurora-card {
+        background-color: rgba(22, 27, 34, 0.85);
+      }
+      .light .timeline-content.aurora-card {
+        background-color: rgba(255, 255, 255, 0.85);
+      }
+
+      .timeline-dot {
+        position: absolute;
+        top: 15px;
+        width: 16px;
+        height: 16px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        z-index: 10;
+        transition: transform 0.3s ease;
+      }
+      /* The border color now needs to adapt to the body background, not a section background */
+      .dark .timeline-dot {
+        border: 3px solid var(--background-dark);
+      }
+      .light .timeline-dot {
+        border: 3px solid var(--background-light);
+      }
+      .timeline-item.in-view .timeline-dot {
+        animation: pulse-dot 1.5s infinite ease-in-out;
+      }
+      @keyframes pulse-dot {
+        0% {
+          box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(88, 166, 255, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(88, 166, 255, 0);
+        }
+      }
+      .timeline-item:nth-child(odd) .timeline-dot {
+        right: -8px;
+        transform: translateX(50%);
+      }
+      .timeline-item:nth-child(even) .timeline-dot {
+        left: -8px;
+        transform: translateX(-50%);
+      }
+
+      @media screen and (max-width: 768px) {
+        .timeline-container::before {
+          left: 8px;
+        }
+        .timeline-item {
+          width: 100%;
+          padding-left: 50px;
+          padding-right: 0;
+        }
+        .timeline-item:nth-child(odd),
+        .timeline-item:nth-child(even) {
+          left: 0;
+          text-align: left;
+        }
+        .timeline-dot {
+          left: 0;
+        }
+        .timeline-item:nth-child(odd) .timeline-dot,
+        .timeline-item:nth-child(even) .timeline-dot {
+          transform: translateX(0);
+          left: 0;
+        }
+      }
+
+      /* Skill Circle Progress Bar */
+      .skill-circle {
+        position: relative;
+        width: 120px;
+        height: 120px;
+      }
+      .skill-circle svg {
+        width: 120px;
+        height: 120px;
+        transform: rotate(-90deg);
+      }
+      .skill-circle circle {
+        fill: none;
+        stroke-width: 8;
+        stroke-linecap: round;
+      }
+      .skill-circle .progress-bg {
+        stroke: var(--border-dark);
+      }
+      .light .skill-circle .progress-bg {
+        stroke: var(--border-light);
+      }
+      .skill-circle .progress-bar {
+        stroke: url(#skill-gradient);
+        stroke-dasharray: 314;
+        stroke-dashoffset: 314;
+        transition: stroke-dashoffset 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      .skill-percentage {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-weight: 600;
+        font-size: 1.25rem;
+      }
+
+      /* Button Styles */
+      .btn {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      .btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+          circle at var(--mouse-x) var(--mouse-y),
+          var(--primary-hover),
+          transparent 40%
+        );
+        opacity: 0;
+        transition: opacity 0.5s;
+      }
+      .btn:hover::before {
+        opacity: 0.3;
+      }
+      .btn-primary {
+        background-color: var(--primary);
+      }
+      .btn-primary:hover {
+        box-shadow: 0 4px 20px -5px var(--shadow-color);
+      }
+
+      /* Floating Label for Contact Form */
+      .floating-label-group {
+        position: relative;
+      }
+      .floating-label {
+        position: absolute;
+        top: 50%;
+        left: 1rem;
+        transform: translateY(-50%);
+        transition: all 0.2s ease-in-out;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+      .floating-input:focus ~ .floating-label,
+      .floating-input:not(:placeholder-shown) ~ .floating-label {
+        top: 0;
+        transform: translateY(-50%) scale(0.85);
+        padding: 0 0.25rem;
+        opacity: 1;
+        color: var(--primary);
+      }
+      .dark .floating-input:focus ~ .floating-label,
+      .dark .floating-input:not(:placeholder-shown) ~ .floating-label {
+        background-color: var(--card-dark);
+      }
+      .light .floating-input:focus ~ .floating-label,
+      .light .floating-input:not(:placeholder-shown) ~ .floating-label {
+        background-color: var(--card-light);
+      }
+
+      .icon-sm {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+      .icon-md {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!-- This canvas is the 3D background -->
+    <div id="background-canvas"></div>
+
+    <svg width="0" height="0">
+      <defs>
+        <linearGradient id="skill-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop
+            offset="0%"
+            style="stop-color: var(--primary); stop-opacity: 1"
+          />
+          <stop
+            offset="100%"
+            style="stop-color: var(--secondary); stop-opacity: 1"
+          />
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <header
+      id="navbar"
+      class="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+    >
+      <div
+        class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center"
+      >
+        <a href="#" class="text-3xl font-bold tracking-tighter"
+          >RJ<span class="text-primary">.</span></a
+        >
+        <nav class="hidden md:flex space-x-8 text-sm font-medium">
+          <a href="#about" class="hover:text-primary transition-colors"
+            >About</a
+          >
+          <a href="#experience" class="hover:text-primary transition-colors"
+            >Experience</a
+          >
+          <a href="#projects" class="hover:text-primary transition-colors"
+            >Projects</a
+          >
+          <a href="#skills" class="hover:text-primary transition-colors"
+            >Skills</a
+          >
+          <a href="#contact" class="hover:text-primary transition-colors"
+            >Contact</a
+          >
+        </nav>
+        <div class="flex items-center gap-2">
+          <button
+            id="theme-toggle"
+            class="p-2 rounded-full focus:outline-none hover:bg-slate-500/20 transition-colors"
+          >
+            <i
+              data-feather="moon"
+              id="theme-toggle-dark-icon"
+              class="hidden"
+            ></i>
+            <i
+              data-feather="sun"
+              id="theme-toggle-light-icon"
+              class="hidden"
+            ></i>
+          </button>
+          <button
+            id="mobile-menu-button"
+            class="md:hidden p-2 rounded-full focus:outline-none hover:bg-slate-500/20 transition-colors"
+          >
+            <i data-feather="menu" class="w-6 h-6"></i>
+          </button>
+        </div>
+      </div>
+      <div id="mobile-menu" class="hidden md:hidden">
+        <nav
+          class="flex flex-col items-center space-y-4 py-4 border-t dark:border-slate-800 light:border-slate-200"
+        >
+          <a
+            href="#about"
+            class="hover:text-primary transition-colors mobile-nav-link"
+            >About</a
+          >
+          <a
+            href="#experience"
+            class="hover:text-primary transition-colors mobile-nav-link"
+            >Experience</a
+          >
+          <a
+            href="#projects"
+            class="hover:text-primary transition-colors mobile-nav-link"
+            >Projects</a
+          >
+          <a
+            href="#skills"
+            class="hover:text-primary transition-colors mobile-nav-link"
+            >Skills</a
+          >
+          <a
+            href="#contact"
+            class="hover:text-primary transition-colors mobile-nav-link"
+            >Contact</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section
+        id="hero"
+        class="h-screen flex items-center justify-center relative"
+      >
+        <div class="text-center px-4 hero-content">
+          <h1
+            class="text-4xl sm:text-5xl md:text-7xl font-bold mb-4 tracking-tighter text-shadow-glow"
+          >
+            Ritesh
+          </h1>
+          <p class="text-xl md:text-2xl text-primary mb-8 font-light">
+            MERN Stack Developer
+          </p>
+          <p class="max-w-2xl mx-auto mb-12 text-base sm:text-lg opacity-80">
+            Passionate about crafting elegant, efficient, and user-centric web
+            applications. Turning complex problems into beautiful, intuitive
+            digital solutions.
+          </p>
+          <div
+            class="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <!-- 
+                        IMPORTANT: To fix the resume download, you must:
+                        1. Upload your resume (e.g., Ritesh_resume_1.pdf) to a public file hosting service (like Google Drive, Dropbox, or your website's hosting).
+                        2. Get the public, direct-download link for that file.
+                        3. Replace the "#" in the href attribute below with your public link.
+                    -->
+            <a
+              href="https://drive.google.com/file/d/1UhccbtXWpUJ41Qf7YR4ZrqiN5cguhH_E/view?usp=sharing"
+              download="Ritesh_Resume.pdf"
+              class="w-full sm:w-auto flex items-center justify-center gap-2 btn btn-primary text-slate-900 py-3 px-8 rounded-full font-semibold"
+            >
+              <i data-feather="download" class="w-5 h-5"></i>
+              Download Resume
+            </a>
+            <a
+              href="#contact"
+              class="w-full sm:w-auto flex items-center justify-center gap-2 btn border-2 border-primary text-primary py-3 px-8 rounded-full font-semibold hover:bg-primary dark:hover:text-slate-900 light:hover:text-white transition-all duration-300"
+            >
+              <i data-feather="send" class="w-5 h-5"></i>
+              Contact Me
+            </a>
+          </div>
+        </div>
+        <a
+          href="#about"
+          class="absolute bottom-10 scroll-down hero-content text-primary"
+        >
+          <i data-feather="arrow-down" class="w-6 h-6"></i>
+        </a>
+      </section>
+
+<section id="about" class="py-20 sm:py-24 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 fade-in-section">
+  <div class="container mx-auto px-4 sm:px-6">
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-16 tracking-tight text-gray-900 dark:text-white">
+      About Me
+    </h2>
+    <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+      <!-- Profile Image -->
+      <div class="lg:w-1/3 flex justify-center lg:justify-end">
+        <div class="relative group">
+          <img 
+            src="./pic.jpg" 
+            alt="Ritesh's Profile Photo" 
+            class="w-64 h-80 object-cover rounded-2xl shadow-2xl ring-4 ring-primary/20 group-hover:ring-primary/40 transition-all duration-300 transform group-hover:scale-105"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        </div>
+      </div>
+      
+      <!-- Text Content -->
+      <div class="lg:w-2/3 text-lg text-gray-700 dark:text-gray-300 text-center lg:text-left leading-relaxed">
+        <p class="mb-8 opacity-90 text-balance">
+          Full Stack Developer with expertise in the MERN stack, building scalable web and mobile applications. Experienced in React, React Native, and Node.js, with a strong foundation in DSA using C++. National-level finalist at the Smart India Hackathon (SIH 2025), with hands-on experience developing AI-assisted solutions and enterprise-scale platforms. Skilled in problem-solving, teamwork, and delivering real-world impact through technology.
+        </p>
+        
+        <!-- Skills Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-8 max-w-4xl mx-auto lg:mx-0">
+          <div class="group flex items-center justify-center lg:justify-start space-x-3 aurora-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <i data-feather="layers" class="text-primary icon-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-200">MERN Stack</span>
+          </div>
+          <div class="group flex items-center justify-center lg:justify-start space-x-3 aurora-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <i data-feather="code" class="text-primary icon-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-200">DSA in C++</span>
+          </div>
+          <div class="group flex items-center justify-center lg:justify-start space-x-3 aurora-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <i data-feather="award" class="text-primary icon-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-200">SIH Finalist</span>
+          </div>
+          <div class="group flex items-center justify-center lg:justify-start space-x-3 aurora-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <i data-feather="target" class="text-primary icon-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-200">Problem-Solving</span>
+          </div>
+          <div class="group flex items-center justify-center lg:justify-start space-x-3 aurora-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50">
+            <i data-feather="users" class="text-primary icon-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300"></i>
+            <span class="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-200">Teamwork</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+      <section id="experience" class="py-20 sm:py-24 fade-in-section">
+        <div class="container mx-auto px-4 sm:px-6">
+          <h2
+            class="text-3xl sm:text-4xl font-bold text-center mb-24 tracking-tight"
+          >
+            My Journey
+          </h2>
+
+          <div class="timeline-container relative space-y-16">
+            <!-- SIH -->
+            <div class="timeline-item flex items-start gap-6">
+              <div class="timeline-dot mt-2"></div>
+
+<div class="timeline-content aurora-card rounded-xl p-6 max-w-2xl text-left">
+  <p class="text-sm text-primary mb-1">
+    June 2025 – December 2025
+  </p>
+
+  <h3 class="text-xl font-bold">Research & Development (Under Development)</h3>
+
+  <p class="font-semibold dark:text-white/70 light:text-slate-600 mb-3">
+    Smart India Hackathon – Mitigating National Security Risks Posed by LLMs
+  </p>
+
+  <p class="opacity-90 text-sm mb-3">
+    Worked on detecting and mitigating malicious use of Large Language Models
+    (LLMs) in AI-driven information operations. Focused on real-time AI-generated
+    content detection, forensic watermarking, attribution, and graph-based threat
+    intelligence for national security applications.
+  </p>
+
+  <p class="opacity-90 text-sm mb-3">
+    Developing a hybrid platform combining AI analytics, dashboards, predictive
+    threat modelling, and policy frameworks. Key aspects include federated
+    intelligence sharing, privacy-preserving techniques, and collaboration with
+    LLM providers for responsible AI practices.
+  </p>
+
+  <p class="opacity-90 text-sm">
+    Project is ongoing under the Smart India Hackathon initiative, continuing
+    development for deployment in national security contexts.
+  </p>
+</div>
+
+
+            </div>
+
+            <!-- Internship -->
+            <div class="timeline-item flex items-start gap-6">
+              <div class="timeline-dot mt-2"></div>
+
+              <div
+                class="timeline-content aurora-card rounded-xl p-6 max-w-2xl text-left"
+              >
+                <p class="text-sm text-primary mb-1">
+                  March 2025 – November 2025
+                </p>
+
+                <h3 class="text-xl font-bold">Software Developer Intern</h3>
+
+                <p
+                  class="font-semibold dark:text-white/70 light:text-slate-600 mb-3"
+                >
+                  Samrish Technologies | Delhi
+                </p>
+
+                <p class="opacity-90 text-sm mb-3">
+                  Worked on real production features for web and mobile
+                  applications using React and React Native, focusing mainly on
+                  UI improvements, bug fixes, and cross-device consistency.
+                </p>
+
+                <p class="opacity-90 text-sm mb-3">
+                  Added real-time updates using Socket.IO, enabling instant UI
+                  changes without repeated API calls and improving overall
+                  responsiveness.
+                </p>
+
+                <p class="opacity-90 text-sm">
+                  Integrated REST APIs, managed frontend–backend data flow, and
+                  learned practical development workflows from requirement
+                  discussions to debugging and final delivery.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="projects" class="py-20 sm:py-24 fade-in-section">
+        <div class="container mx-auto px-4 sm:px-6">
+          <h2
+            class="text-3xl sm:text-4xl font-bold text-center mb-16 tracking-tight"
+          >
+            Featured Projects
+          </h2>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="aurora-card rounded-xl p-6 flex flex-col">
+              <img
+                src="https://placehold.co/600x400/0d1117/58a6ff?text=Chat_Rj"
+                alt="Chat Application Project"
+                class="rounded-lg mb-4 aspect-video object-cover"
+              />
+
+              <h3 class="text-2xl font-bold mb-2">
+                Real-Time Chat & Video Call App
+              </h3>
+
+              <p class="mb-4 opacity-70 grow">
+                Built a real-time one-to-one chat application using React and a
+                Socket.IO–based WebSocket server for instant message delivery.
+                The app supports user authentication, online status, persistent
+                chat history, and peer-to-peer video calling for individual
+                users. Focused on reliable real-time events, smooth UI updates,
+                and clean state management.
+              </p>
+
+              <div class="flex flex-wrap gap-2 mb-4">
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  React
+                </span>
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Node.js
+                </span>
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Express
+                </span>
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  MongoDB
+                </span>
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Socket.IO
+                </span>
+                <span
+                  class="bg-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  WebRTC
+                </span>
+              </div>
+
+              <div
+                class="flex space-x-4 font-semibold mt-auto pt-4 border-t dark:border-slate-800 light:border-slate-200"
+              >
+                <a
+                  href="https://chat-application-j0m9.onrender.com/"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  Live Demo <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+
+                <a
+                  href="https://github.com/riteshjha61253/Chat-Application"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  GitHub <i data-feather="github" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="aurora-card rounded-xl p-6 flex flex-col">
+              <img
+                src="https://placehold.co/600x400/0d1117/e364e3?text=Attendify"
+                alt="Attendify Project"
+                class="rounded-lg mb-4 aspect-video object-cover"
+              />
+
+              <h3 class="text-2xl font-bold mb-2">Attendify</h3>
+
+              <p class="mb-4 opacity-70 grow">
+                Attendify is a web-based attendance management system where I
+                worked as a frontend developer. I focused on building clean,
+                responsive user interfaces using React and Tailwind CSS,
+                translating designs and requirements into functional screens.
+                The system includes authentication flows, location-based
+                attendance using maps and geo-fencing, and clear status
+                indicators for users.
+              </p>
+
+              <div class="flex flex-wrap gap-2 mb-4">
+                <span
+                  class="bg-secondary/20 text-secondary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  React
+                </span>
+                <span
+                  class="bg-secondary/20 text-secondary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Tailwind CSS
+                </span>
+                <span
+                  class="bg-secondary/20 text-secondary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  JavaScript
+                </span>
+                <span
+                  class="bg-secondary/20 text-secondary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Figma
+                </span>
+                <span
+                  class="bg-secondary/20 text-secondary text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  Git / GitHub
+                </span>
+              </div>
+
+              <div
+                class="flex space-x-4 font-semibold mt-auto pt-4 border-t dark:border-slate-800 light:border-slate-200"
+              >
+                <a
+                  href="https://www.loom.com/share/a915a65b843e42b28cbf18006a69e043"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  Demo Video
+                  <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+
+                <a
+                  href="https://github.com/Attendify-Minor/Attendify-Web"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  GitHub <i data-feather="github" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="aurora-card rounded-xl p-6 flex flex-col">
+              <img
+                src="https://placehold.co/600x400/0d1117/30c8c8?text=Resume_Builder"
+                alt="AI Resume Builder"
+                class="rounded-lg mb-5 aspect-video object-cover"
+              />
+
+              <h3 class="text-2xl font-bold mb-2">AI Resume Builder</h3>
+
+              <p class="mb-4 opacity-70 grow">
+                Built an AI-powered resume builder that helps users generate and
+                refine resume content based on their role, skills, and
+                experience. The application uses the OpenAI API to generate
+                summaries and bullet points dynamically, allowing users to
+                iterate and customize their resumes in real time through a clean
+                and simple web interface.
+              </p>
+
+              <div class="flex flex-wrap gap-2 mb-4">
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  React
+                </span>
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  JavaScript
+                </span>
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  OpenAI API
+                </span>
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
+                  REST APIs
+                </span>
+              </div>
+
+              <div
+                class="flex space-x-4 font-semibold mt-auto pt-4 border-t dark:border-slate-800 light:border-slate-200"
+              >
+                <a
+                  href="https://ai-resume-generator-tcda.onrender.com"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  Live Demo <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="aurora-card rounded-xl p-6 flex flex-col">
+              <img
+                src="https://placehold.co/600x400/0d1117/e364e3?text=Aranya"
+                alt="Aranya"
+                class="rounded-lg mb-5 aspect-video object-cover"
+              />
+              <h3 class="text-2xl font-bold mb-2">Aranya</h3>
+              <!-- FIX: Corrected HTML typo from <p. to <p -->
+              <p class="mb-4 opacity-70 grow">
+                Aranya is a dual-platform system consisting of a React Native
+                mobile app for end users and a web-based admin dashboard. I
+                worked on building the user application with a focus on
+                mobile-first UI, smooth navigation, and reusable components,
+                while the admin web panel was designed to manage and monitor
+                user-related data through a structured dashboard interface. The
+                project emphasizes clear separation between user-facing mobile
+                features and administrative web controls.
+              </p>
+              <div class="flex flex-wrap gap-2 mb-4">
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                  >React</span
+                >
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                  >React Native</span
+                >
+                <span
+                  class="bg-accent/20 text-accent text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                  >Git</span
+                >
+              </div>
+              <div
+                class="flex space-x-4 font-semibold mt-auto pt-4 border-t dark:border-slate-800 light:border-slate-200"
+              >
+                <a
+                  href="https://aranya-dqjk0b8l4-anurag-singhs-projects-4364243a.vercel.app"
+                  target="_blank"
+                  class="flex items-center gap-2 text-primary hover:underline"
+                >
+                  Live Demo <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="skills" class="py-20 sm:py-24 fade-in-section">
+        <div class="container mx-auto px-4 sm:px-6">
+          <h2
+            class="text-3xl sm:text-4xl font-bold text-center mb-16 tracking-tight"
+          >
+            Technical Skills
+          </h2>
+          <div class="space-y-12">
+            <!-- Frontend Section -->
+            <div>
+              <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                Frontend
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">React.js</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    React Native
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Next.js</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    JavaScript (ES6+)
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Tailwind CSS
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Backend Section -->
+            <div>
+              <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                Backend
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Node.js</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Express.js</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">MongoDB</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Prisma ORM</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">REST APIs</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Architecture & Auth Section -->
+            <div>
+              <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                Architecture & Auth
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    JWT Authentication
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Role-Based Access Control
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    MVC Architecture
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">WebSockets</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tools & Platforms Section -->
+            <div>
+              <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                Tools & Platforms
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Git & GitHub
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Postman</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Vercel</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">Render</p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Linux Basics
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI & Extras Section -->
+            <div>
+              <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+                AI & Extras
+              </h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    AI API Integration (Gemini / OpenAI)
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Prompt Engineering
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Responsive Design
+                  </p>
+                </div>
+                <div
+                  class="group bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-center"
+                >
+                  <p class="font-semibold text-lg text-gray-800">
+                    Web Performance Optimization
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" class="py-20 sm:py-24 fade-in-section">
+        <div class="container mx-auto px-4 sm:px-6">
+          <h2
+            class="text-3xl sm:text-4xl font-bold text-center mb-4 tracking-tight"
+          >
+            Get In Touch
+          </h2>
+          <p class="text-center max-w-xl mx-auto opacity-70 mb-12">
+            I'm currently open to new opportunities and collaborations. Feel
+            free to send me a message!
+          </p>
+          <div class="max-w-xl mx-auto aurora-card rounded-xl p-8">
+            <form id="contact-form" class="space-y-8">
+              <input
+                type="hidden"
+                name="access_key"
+                value="f72c20ed-a6b3-4a4b-b67a-480ac8388c48"
+              />
+              <input
+                type="hidden"
+                name="subject"
+                value="New Message from Portfolio Website"
+              />
+              <input type="hidden" name="from_name" value="Ritesh Portfolio" />
+              <div class="floating-label-group">
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  placeholder=" "
+                  required
+                  class="floating-input w-full p-4 bg-transparent border-2 dark:border-slate-700 light:border-slate-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+                />
+                <label for="name" class="floating-label">Full Name</label>
+              </div>
+              <div class="floating-label-group">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder=" "
+                  required
+                  class="floating-input w-full p-4 bg-transparent border-2 dark:border-slate-700 light:border-slate-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+                />
+                <label for="email" class="floating-label">Email Address</label>
+              </div>
+              <div class="floating-label-group">
+                <textarea
+                  id="message"
+                  name="message"
+                  rows="4"
+                  placeholder=" "
+                  required
+                  class="floating-input w-full p-4 bg-transparent border-2 dark:border-slate-700 light:border-slate-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+                ></textarea>
+                <label for="message" class="floating-label">Your Message</label>
+              </div>
+              <button
+                type="submit"
+                class="w-full flex items-center justify-center gap-2 btn btn-primary text-slate-900 py-4 px-8 rounded-full font-semibold"
+              >
+                Send Message
+                <i data-feather="arrow-right" class="w-5 h-5"></i>
+              </button>
+            </form>
+            <div id="form-result" class="mt-4 text-center font-medium"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer
+      class="relative overflow-hidden border-t dark:border-slate-800 light:border-slate-200 py-16"
+    >
+      <div
+        class="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[150%] bg-primary/10 dark:bg-primary/5 blur-[100px] rounded-full z-0"
+      ></div>
+      <div class="container mx-auto px-4 sm:px-6 relative z-10">
+        <div
+          class="grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left"
+        >
+          <!-- About -->
+          <div>
+            <h3
+              class="text-3xl font-bold tracking-tighter inline-block mx-auto md:mx-0"
+            >
+              RJ<span class="text-primary">.</span>
+            </h3>
+            <p class="mt-4 text-sm opacity-70 max-w-xs mx-auto md:mx-0">
+              A passionate developer crafting modern web experiences from Delhi,
+              India.
+            </p>
+          </div>
+          <!-- Quick Links -->
+          <div>
+            <h4 class="font-bold text-lg mb-4">Quick Links</h4>
+            <nav class="flex flex-col space-y-2 items-center md:items-start">
+              <a
+                href="#about"
+                class="hover:text-primary transition-colors text-sm opacity-80 hover:opacity-100"
+                >About</a
+              >
+              <a
+                href="#experience"
+                class="hover:text-primary transition-colors text-sm opacity-80 hover:opacity-100"
+                >Experience</a
+              >
+              <a
+                href="#projects"
+                class="hover:text-primary transition-colors text-sm opacity-80 hover:opacity-100"
+                >Projects</a
+              >
+              <a
+                href="#skills"
+                class="hover:text-primary transition-colors text-sm opacity-80 hover:opacity-100"
+                >Skills</a
+              >
+              <a
+                href="#contact"
+                class="hover:text-primary transition-colors text-sm opacity-80 hover:opacity-100"
+                >Contact</a
+              >
+            </nav>
+          </div>
+          <!-- Connect -->
+          <div>
+            <h4 class="font-bold text-lg mb-4">Connect</h4>
+            <div class="flex justify-center md:justify-start space-x-6">
+              <a
+                href="https://www.linkedin.com/in/riteshjha61253/"
+                target="_blank"
+                class="dark:text-slate-400 light:text-slate-600 hover:text-primary transition-colors"
+                ><i data-feather="linkedin" class="icon-sm"></i
+              ></a>
+              <a
+                href="https://github.com/riteshjha61253"
+                target="_blank"
+                class="dark:text-slate-400 light:text-slate-600 hover:text-primary transition-colors"
+                ><i data-feather="github" class="icon-sm"></i
+              ></a>
+            </div>
+          </div>
+        </div>
+        <div
+          class="mt-16 pt-8 border-t dark:border-slate-800/50 light:border-slate-200/50 text-center text-sm opacity-60"
+        >
+          <p>&copy; 2025 Ritesh. Designed & Built with passion.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        feather.replace();
+
+        // --- THEME TOGGLE ---
+        const themeToggleBtn = document.getElementById("theme-toggle");
+        const darkIcon = document.getElementById("theme-toggle-dark-icon");
+        const lightIcon = document.getElementById("theme-toggle-light-icon");
+        const htmlEl = document.documentElement;
+
+        const setTheme = (theme) => {
+          localStorage.setItem("theme", theme);
+          if (theme === "dark") {
+            htmlEl.classList.add("dark");
+            htmlEl.classList.remove("light");
+            darkIcon.classList.remove("hidden");
+            lightIcon.classList.add("hidden");
+          } else {
+            htmlEl.classList.remove("dark");
+            htmlEl.classList.add("light");
+            lightIcon.classList.remove("hidden");
+            darkIcon.classList.add("hidden");
+          }
+          feather.replace();
+        };
+
+        const currentTheme = localStorage.getItem("theme") || "light";
+        setTheme(currentTheme);
+
+        console.log("Current theme:", currentTheme);
+
+        themeToggleBtn.addEventListener("click", () => {
+          const newTheme = htmlEl.classList.contains("light")
+            ? "dark"
+            : "light";
+          setTheme(newTheme);
+        });
+
+        // --- MOBILE MENU ---
+        const mobileMenuButton = document.getElementById("mobile-menu-button");
+        const mobileMenu = document.getElementById("mobile-menu");
+        const mobileNavLinks = document.querySelectorAll(".mobile-nav-link");
+        const navbar = document.getElementById("navbar");
+
+        mobileMenuButton.addEventListener("click", () => {
+          const isHidden = mobileMenu.classList.toggle("hidden");
+          if (!isHidden) {
+            navbar.classList.add(
+              "dark:bg-slate-900",
+              "light:bg-white",
+              "shadow-lg"
+            );
+          } else if (window.scrollY <= 50) {
+            navbar.classList.remove(
+              "dark:bg-slate-900",
+              "light:bg-white",
+              "shadow-lg"
+            );
+          }
+        });
+
+        mobileNavLinks.forEach((link) => {
+          link.addEventListener("click", () => {
+            mobileMenu.classList.add("hidden");
+            if (window.scrollY <= 50) {
+              navbar.classList.remove(
+                "dark:bg-slate-900",
+                "light:bg-white",
+                "shadow-lg"
+              );
+            }
+          });
+        });
+
+        // --- STICKY NAVBAR ---
+        window.onscroll = () => {
+          if (window.scrollY > 50) {
+            navbar.classList.add(
+              "dark:bg-slate-900/80",
+              "light:bg-white/80",
+              "backdrop-blur-lg",
+              "shadow-lg"
+            );
+          } else if (mobileMenu.classList.contains("hidden")) {
+            navbar.classList.remove(
+              "dark:bg-slate-900/80",
+              "light:bg-white/80",
+              "backdrop-blur-lg",
+              "shadow-lg"
+            );
+          }
+        };
+
+        // --- ACTIVE NAV LINK HIGHLIGHTING ---
+        const sections = document.querySelectorAll("section[id]");
+        const navLinks = document.querySelectorAll("nav a");
+        const navObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const id = entry.target.getAttribute("id");
+                navLinks.forEach((link) => {
+                  link.classList.remove("text-primary", "font-bold");
+                  if (link.getAttribute("href") === `#${id}`) {
+                    link.classList.add("text-primary", "font-bold");
+                  }
+                });
+              }
+            });
+          },
+          { rootMargin: "-50% 0px -50% 0px" }
+        );
+        sections.forEach((section) => navObserver.observe(section));
+
+        // --- FADE-IN SECTIONS ---
+        const fadeElements = document.querySelectorAll(".fade-in-section");
+        const fadeObserver = new IntersectionObserver(
+          (entries, observer) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-visible");
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.1 }
+        );
+        fadeElements.forEach((section) => fadeObserver.observe(section));
+
+        // --- SKILL CIRCLE ANIMATION ---
+        const skillItems = document.querySelectorAll(".skill-item");
+        const skillObserver = new IntersectionObserver(
+          (entries, observer) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                const skillItem = entry.target;
+                const progressBar = skillItem.querySelector(".progress-bar");
+                const percentageText =
+                  skillItem.querySelector(".skill-percentage");
+                const targetPercent = parseInt(
+                  skillItem.getAttribute("data-percent")
+                );
+                const radius = progressBar.r.baseVal.value;
+                const circumference = 2 * Math.PI * radius;
+
+                const offset =
+                  circumference - (targetPercent / 100) * circumference;
+                progressBar.style.strokeDashoffset = offset;
+
+                let currentPercent = 0;
+                const interval = setInterval(() => {
+                  if (currentPercent >= targetPercent) {
+                    clearInterval(interval);
+                    percentageText.textContent = `${targetPercent}%`;
+                  } else {
+                    currentPercent++;
+                    percentageText.textContent = `${currentPercent}%`;
+                  }
+                }, 2000 / targetPercent);
+
+                observer.unobserve(skillItem);
+              }
+            });
+          },
+          { threshold: 0.5 }
+        );
+        skillItems.forEach((item) => skillObserver.observe(item));
+
+        // --- CONTACT FORM ---
+        const form = document.getElementById("contact-form");
+        const result = document.getElementById("form-result");
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          const formData = new FormData(form);
+          const object = {};
+          formData.forEach((value, key) => {
+            object[key] = value;
+          });
+          const json = JSON.stringify(object);
+          result.innerHTML = "Sending...";
+          result.className = "mt-4 text-center font-medium text-slate-400";
+
+          fetch("https://api.web3forms.com/submit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: json,
+          })
+            .then(async (response) => {
+              let jsonResponse = await response.json();
+              if (response.status == 200) {
+                result.innerHTML = "Message sent successfully!";
+                result.className =
+                  "mt-4 text-center font-medium text-green-500";
+              } else {
+                result.innerHTML = jsonResponse.message;
+                result.className = "mt-4 text-center font-medium text-red-500";
+              }
+            })
+            .catch((error) => {
+              result.innerHTML = "Something went wrong!";
+              result.className = "mt-4 text-center font-medium text-red-500";
+            })
+            .finally(() => {
+              form.reset();
+              setTimeout(() => {
+                result.innerHTML = "";
+              }, 5000);
+            });
+        });
+
+        // --- AURORA EFFECT ---
+        document.querySelectorAll(".aurora-card, .btn").forEach((card) => {
+          card.addEventListener("mousemove", (e) => {
+            const rect = card.getBoundingClientRect();
+            card.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+            card.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+          });
+        });
+
+        // --- BACKGROUND 3D CANVAS ---
+        const container = document.getElementById("background-canvas");
+        let renderer, scene, camera, particles, shootingStars;
+        const shootingStarCount = 200;
+
+        const initThree = () => {
+          if (renderer) {
+            // Clean up previous instance
+            renderer.dispose();
+            if (container) container.innerHTML = "";
+          }
+          scene = new THREE.Scene();
+          camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+          );
+          renderer = new THREE.WebGLRenderer({ alpha: true });
+
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          if (container) container.appendChild(renderer.domElement);
+
+          camera.position.z = 5;
+
+          // Create the main starfield
+          const particlesGeometry = new THREE.BufferGeometry();
+          const count = 5000;
+          const positions = new Float32Array(count * 3);
+          for (let i = 0; i < count * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 15;
+          }
+          particlesGeometry.setAttribute(
+            "position",
+            new THREE.BufferAttribute(positions, 3)
+          );
+
+          const particleColor = getComputedStyle(document.documentElement)
+            .getPropertyValue(
+              htmlEl.classList.contains("dark") ? "--primary" : "--text-light"
+            )
+            .trim();
+          const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.005,
+            sizeAttenuation: true,
+            color: new THREE.Color(particleColor),
+          });
+          particles = new THREE.Points(particlesGeometry, particlesMaterial);
+          scene.add(particles);
+
+          // Create shooting stars
+          const shootingStarsGeometry = new THREE.BufferGeometry();
+          const shootingStarPositions = new Float32Array(shootingStarCount * 3);
+          for (let i = 0; i < shootingStarCount * 3; i++) {
+            shootingStarPositions[i] = (Math.random() - 0.5) * 15;
+          }
+          shootingStarsGeometry.setAttribute(
+            "position",
+            new THREE.BufferAttribute(shootingStarPositions, 3)
+          );
+          const shootingStarMaterial = new THREE.PointsMaterial({
+            size: 0.02,
+            sizeAttenuation: true,
+            color: new THREE.Color(
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--secondary")
+                .trim()
+            ),
+            transparent: true,
+            opacity: 0.8,
+          });
+          shootingStars = new THREE.Points(
+            shootingStarsGeometry,
+            shootingStarMaterial
+          );
+          scene.add(shootingStars);
+        };
+
+        const mouse = new THREE.Vector2();
+        window.addEventListener("mousemove", (event) => {
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        const clock = new THREE.Clock();
+        let scrollY = window.scrollY;
+
+        window.addEventListener("scroll", () => {
+          scrollY = window.scrollY;
+        });
+
+        const animate = () => {
+          if (!renderer || !particles || !shootingStars) return;
+          const elapsedTime = clock.getElapsedTime();
+
+          // Animate main starfield
+          particles.rotation.y = elapsedTime * 0.05;
+          particles.rotation.x = -mouse.y * 0.2;
+          particles.position.y = scrollY * 0.003;
+
+          // Animate shooting stars
+          const shootingStarPositions =
+            shootingStars.geometry.attributes.position.array;
+          for (let i = 0; i < shootingStarCount; i++) {
+            const i3 = i * 3;
+            // Move stars downwards
+            shootingStarPositions[i3 + 1] -= 0.02;
+            // When a star goes off-screen, reset its position to the top with a new random x/z
+            if (shootingStarPositions[i3 + 1] < -7) {
+              shootingStarPositions[i3 + 1] = 7;
+              shootingStarPositions[i3] = (Math.random() - 0.5) * 15;
+              shootingStarPositions[i3 + 2] = (Math.random() - 0.5) * 15;
+            }
+          }
+          shootingStars.geometry.attributes.position.needsUpdate = true;
+
+          // Update camera based on mouse
+          camera.position.x += (mouse.x * 0.1 - camera.position.x) * 0.05;
+          camera.position.y += (-mouse.y * 0.1 - camera.position.y) * 0.05;
+
+          renderer.render(scene, camera);
+          window.requestAnimationFrame(animate);
+        };
+
+        window.addEventListener("resize", () => {
+          if (!camera || !renderer) return;
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        themeToggleBtn.addEventListener("click", () => {
+          setTimeout(() => {
+            if (particles) {
+              const newColor = getComputedStyle(document.documentElement)
+                .getPropertyValue(
+                  htmlEl.classList.contains("dark")
+                    ? "--primary"
+                    : "--text-light"
+                )
+                .trim();
+              particles.material.color.set(newColor);
+            }
+            if (shootingStars) {
+              const newShootingStarColor = getComputedStyle(
+                document.documentElement
+              )
+                .getPropertyValue("--secondary")
+                .trim();
+              shootingStars.material.color.set(newShootingStarColor);
+            }
+          }, 100);
+        });
+
+        initThree();
+        animate();
+      });
+    </script>
+  </body>
+</html>
